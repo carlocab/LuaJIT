@@ -1,0 +1,23 @@
+name: CI
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  tests:
+    name: Test on ${{ matrix.os }} with ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-10.15, macos-11, macos-12, ubuntu-latest]
+        arch: [nehalem, haswell, syklake, knl, syklake-avx512, native]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build LuaJIT
+        run: make -j CCOPT_x64=-march=${{ matrix.arch }}
+
+      - name: Run bytecode test
+        run: |
+          cd src
+          touch empty.lua
+          ./luajit -b -o osx -a arm empty.lua empty.o
+          file empty.o
