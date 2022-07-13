@@ -7,13 +7,18 @@ jobs:
     strategy:
       matrix:
         os: [macos-10.15, macos-11, macos-12, ubuntu-latest]
-        arch: [nehalem, haswell, syklake, knl, syklake-avx512, native]
+        arch: [nehalem, haswell, skylake, knl, skylake-avx512, native]
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
 
       - name: Build LuaJIT
-        run: make -j CCOPT_x64=-march=${{ matrix.arch }}
+        run: |
+          if [[ "$(uname -s)" = Darwin ]]
+          then
+            export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)"
+          fi
+          make -j CCOPT_x64=-march=${{ matrix.arch }}
 
       - name: Run bytecode test
         run: |
