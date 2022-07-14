@@ -2,11 +2,11 @@ name: CI
 on: [push, pull_request, workflow_dispatch]
 jobs:
   tests:
-    name: Test on ${{ matrix.os }} with ${{ matrix.arch }}
+    name: Test on ${{ matrix.os }} with -march=${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04, macOS-latest]
+        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04, macOS-10.15, macOS-11, macOS-12]
         arch: [core2, nehalem, westmere, sandybridge, ivybridge, haswell, broadwell, skylake, knl, skylake-avx512, native]
       fail-fast: false
     steps:
@@ -16,7 +16,7 @@ jobs:
         run: |
           if [[ "$(uname -s)" = Darwin ]]
           then
-            export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)"
+            export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion | cut -f1 -d.)"
           fi
           make -j CCOPT_x64=-march=${{ matrix.arch }} || true
 
@@ -27,12 +27,15 @@ jobs:
 
           if ! ./luajit -b -o osx -a arm64 empty.lua empty.o
           then
-            echo "::warning ::Unable to execute LuaJIT"
+            echo "::warning ::Unable to execute LuaJIT on ${{ matrix.os }} with -march=${{ matrix.arch }}"
             exit 0
           fi
 
+          echo "# Compiler version" >> $GITHUB_STEP_SUMMARY
+          printf '```\n%s```\n' "$(gcc --version)" >> $GITHUB_STEP_SUMMARY
           file_output="$(file empty.o)"
-          echo '`'"$file_output"'`' >> $GITHUB_STEP_SUMMARY
+          echo '# `file` output' >> $GITHUB_STEP_SUMMARY
+          printf '`%s`\n' "$file_output" >> $GITHUB_STEP_SUMMARY
           if [[ "$file_output" = *"Mach-O"* ]]
           then
             echo "::notice title=${{ matrix.os }}-${{ matrix.arch }} succeeded::${file_output}"
