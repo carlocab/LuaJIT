@@ -16,7 +16,7 @@ jobs:
         run: |
           if [[ "$(uname -s)" = Darwin ]]
           then
-            export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion | cut -f1 -d.)"
+            export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)"
           fi
           make -j CCOPT_x64=-march=${{ matrix.arch }} || true
 
@@ -32,7 +32,7 @@ jobs:
           fi
 
           echo "# Compiler version" >> $GITHUB_STEP_SUMMARY
-          printf '```\n%s```\n' "$(gcc --version)" >> $GITHUB_STEP_SUMMARY
+          printf '```\n%s\n```\n' "$(gcc --version)" >> $GITHUB_STEP_SUMMARY
           file_output="$(file empty.o)"
           echo '# `file` output' >> $GITHUB_STEP_SUMMARY
           printf '`%s`\n' "$file_output" >> $GITHUB_STEP_SUMMARY
