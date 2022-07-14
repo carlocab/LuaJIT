@@ -6,7 +6,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04]
+        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04, macOS-latest]
         arch: [core2, nehalem, westmere, sandybridge, ivybridge, haswell, broadwell, skylake, knl, skylake-avx512]
       fail-fast: false
     steps:
@@ -32,7 +32,7 @@ jobs:
           fi
 
           file_output="$(file empty.o)"
-          echo "$file_output" >> $GITHUB_STEP_SUMMARY
+          echo '`'"$file_output"'`' >> $GITHUB_STEP_SUMMARY
           if [[ "$file_output" = *"Mach-O"* ]]
           then
             echo "::notice title=${{ matrix.os }}-${{ matrix.arch }} succeeded::${file_output}"
