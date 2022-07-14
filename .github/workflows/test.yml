@@ -6,8 +6,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-10.15, macos-11, macos-12, ubuntu-latest]
-        arch: [nehalem, haswell, skylake, knl, skylake-avx512, native]
+        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04]
+        arch: [core2, nehalem, westmere, sandybridge, ivybridge, haswell, broadwell, skylake, knl, knm, skylake-avx512, cannonlake]
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -24,5 +24,17 @@ jobs:
         run: |
           cd src
           touch empty.lua
-          ./luajit -b -o osx -a arm empty.lua empty.o
-          file empty.o
+          if ! ./luajit -b -o osx -a arm64 empty.lua empty.o
+          then
+            echo "::warning ::Unable to execute LuaJIT"
+            exit 0
+          fi
+
+          file_output="$(file empty.o)"
+          echo "$file_output" >> $GITHUB_STEP_SUMMARY
+          if [[ "$file_output" = *"Mach-O"* ]]
+            echo "::notice title=${{ matrix.os }}-${{ matrix.arch }} succeeded::${file_output}"
+          then
+            echo "::error title=${{ matrix.os }}-${{ matrix.arch }} failed::${file_output}"
+            exit 1
+          fi
