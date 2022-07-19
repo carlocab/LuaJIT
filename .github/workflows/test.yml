@@ -2,15 +2,28 @@ name: CI
 on: [push, pull_request, workflow_dispatch]
 jobs:
   tests:
-    name: Test on ${{ matrix.os }} with -march=${{ matrix.arch }}
+    name: Test on ${{ matrix.os }} with -mavx512${{ matrix.avx }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04, macOS-10.15, macOS-11, macOS-12]
-        arch: [core2, nehalem, westmere, sandybridge, ivybridge, haswell, broadwell, skylake, knl, skylake-avx512, native]
+        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04]
+        avx: [f, pf, er, cd, vl, bw, dq, ifma, vbmi, vbmi2, bf16, fp16, bitalg, vpopcntdq, vp2intersect, 4fmaps, vnni, 4vnniw]
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
+
+      - name: Determine optimisation flags
+        id: avx-flags
+        shell: ruby {0}
+        run: |
+          flags = %w[f pf er cd vl bw dq ifma vbmi vbmi2 bf16 fp16 bitalg vpopcntdq vp2intersect 4fmaps vnni 4vnniw]
+          use = []
+          flags.each do |flag|
+            use << "-mavx512#{flag}"
+            break if flag == "${{ matrix.avx }}"
+          end
+
+          puts "::set-output name=value::#{use.join(" ")}"
 
       - name: Build LuaJIT
         run: |
@@ -18,7 +31,7 @@ jobs:
           then
             export MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)"
           fi
-          make -j CCOPT_x64=-march=${{ matrix.arch }} || true
+          make -j CCOPT_x64="${{ steps.avx-flags.outputs.value }}" || true
 
       - name: Run bytecode test
         run: |
@@ -27,7 +40,7 @@ jobs:
 
           if ! ./luajit -b -o osx -a arm64 empty.lua empty.o
           then
-            echo "::warning ::Unable to execute LuaJIT on ${{ matrix.os }} with -march=${{ matrix.arch }}"
+            echo "::warning ::Unable to execute LuaJIT on ${{ matrix.os }} with -mavx512${{ matrix.avx }}"
             exit 0
           fi
 
@@ -38,8 +51,8 @@ jobs:
           printf '`%s`\n' "$file_output" >> $GITHUB_STEP_SUMMARY
           if [[ "$file_output" = *"Mach-O"* ]]
           then
-            echo "::notice title=${{ matrix.os }}-${{ matrix.arch }} succeeded::${file_output}"
+            echo "::notice title=${{ matrix.os }}-mavx512${{ matrix.avx }} succeeded::${file_output}"
           else
-            echo "::error title=${{ matrix.os }}-${{ matrix.arch }} failed::${file_output}"
+            echo "::error title=${{ matrix.os }}-mavx512${{ matrix.avx }} failed::${file_output}"
             exit 1
           fi
